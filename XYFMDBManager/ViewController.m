@@ -11,6 +11,8 @@
 
 @interface ViewController ()
 
+@property (nonatomic, strong) XYUserFMDBManager *userDBManager;
+
 @end
 
 @implementation ViewController
@@ -18,22 +20,56 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    XYUserFMDBManager *userManage = [[XYUserFMDBManager alloc] init];
+    self.userDBManager = [[XYUserFMDBManager alloc] init];
     // 建表
-    [userManage createDataTable];
+    [self.userDBManager createDataTable];
+    
+    [self normalOperationDB];
+    
+    [self multhreadOperationDB];
+
+}
+
+#pragma mark - 正常操作数据库
+- (void)normalOperationDB
+{
+    self.userDBManager = [[XYUserFMDBManager alloc] init];
+    // 建表
+    [self.userDBManager createDataTable];
     
     // 插入数据
-    [userManage insertUserInfo];
-    
+    [self.userDBManager insertUserInfo];
+
     // 更新数据
-    [userManage updateUserInfo];
+    [self.userDBManager updateUserInfo];
     
     // 查找数据
-    [userManage queryAllUserInfo];
+    [self.userDBManager queryAllUserInfo];
     
     // 删除数据
-    [userManage deleteUserInfo];
+    [self.userDBManager deleteUserInfo];
+}
 
+#pragma mark - 多线程操作数据库
+- (void)multhreadOperationDB
+{
+    dispatch_group_t group = dispatch_group_create();
+    dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+    
+    dispatch_group_async(group, queue, ^{
+        [self.userDBManager insertUserInfoByMulThreadWithValues:@[@100,@"李四100",@26]];
+    });
+    
+    dispatch_group_async(group, queue, ^{
+        [self.userDBManager insertUserInfoByMulThreadWithValues:@[@101,@"李四101",@26]];
+    });
+    dispatch_group_async(group, queue, ^{
+        [self.userDBManager insertUserInfoByMulThreadWithValues:@[@102,@"李四103",@26]];
+    });
+    
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        [self.userDBManager queryAllUserInfo];
+    });
 }
 
 

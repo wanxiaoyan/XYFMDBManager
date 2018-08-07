@@ -20,9 +20,13 @@
 
 #define PATH_OF_DOCUMENT_FOLDER    [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0]
 
+static NSString *const kDataBaseName = @"data.sqlite"; //!< 数据库名字
+
 @interface XYFMDBManager ()
 
 @property (nonatomic, strong) FMDatabase *db; //!< 数据库
+
+@property (nonatomic, strong) FMDatabaseQueue *dbQueue; //!< 数据库队列
 
 @end
 
@@ -35,7 +39,7 @@
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         manager = [super allocWithZone:zone];
-        [manager createDataBaseWithName:@"data.sqlite"];
+        [manager createDataBaseWithName:kDataBaseName];
     });
     
     return manager;
@@ -74,6 +78,8 @@
         return NO;
     }
 }
+
+#pragma mark -------------------- 正常操作
 
 #pragma mark - 添加数据
 - (BOOL)insertDataWithSql:(NSString *)sql values:(NSArray *)values
@@ -207,12 +213,107 @@
     }
 }
 
+#pragma mark -------------------- 多线程操作
+
+#pragma mark - 插入数据
+- (BOOL)insertDataByMulThreadWithSql:(NSString *)sql values:(NSArray *)values
+{
+    __block BOOL result = NO;
+    [self.dbQueue inDatabase:^(FMDatabase * _Nonnull db) {
+        BOOL result = [db executeUpdate:sql withArgumentsInArray:values];
+        if (result) {
+            DBLog(@"插入数据成功 - %@",[NSThread currentThread]);
+        }else
+        {
+            DBLog(@"插入数据失败");
+        }
+    }];
+    
+    return result;
+}
+
+#pragma mark - 更新数据
+- (BOOL)updateDataByMulThreadWithSql:(NSString *)sql values:(NSArray *)values
+{
+    __block BOOL result = NO;
+    [self.dbQueue inDatabase:^(FMDatabase * _Nonnull db) {
+        BOOL result = [db executeUpdate:sql withArgumentsInArray:values];
+        if (result) {
+            DBLog(@"更新数据成功 - %@", [NSThread currentThread]);
+        }else
+        {
+            DBLog(@"更新数据失败");
+        }
+    }];
+    
+    return result;
+}
+
+#pragma mark - 删除数据
+- (BOOL)deleteDataByMulThreadWithSql:(NSString *)sql values:(NSArray *)values
+{
+    __block BOOL result = NO;
+    [self.dbQueue inDatabase:^(FMDatabase * _Nonnull db) {
+        BOOL result = [db executeUpdate:sql withArgumentsInArray:values];
+        if (result) {
+            DBLog(@"删除数据成功 - %@", [NSThread currentThread]);
+        }else
+        {
+            DBLog(@"删除数据失败");
+        }
+    }];
+    
+    return result;
+}
+
+#pragma mark - 根据条件查找数据是否存在
+- (BOOL)itemDataIsExistsByMulThreadWithTableName:(NSString *)tableName primaryKey:(NSString *)primaryKey values:(NSArray *)values completionBlock:(void (^)(FMResultSet *result))completionBlock
+
+{
+    __block BOOL result = NO;
+    
+    [self.dbQueue inDatabase:^(FMDatabase * _Nonnull db) {
+    
+        NSString *sql = [NSString stringWithFormat:@"select * from %@ where %@ = ?",tableName,primaryKey];
+        FMResultSet *resultSet = [db executeQuery:sql withArgumentsInArray:values];
+        // 回调
+        !completionBlock ? : completionBlock(resultSet);
+
+        NSMutableArray *arr = @[].mutableCopy;
+        while ([resultSet next]) {
+        NSString *value = [resultSet stringForColumn:primaryKey];
+        [arr addObject:value];
+        }
+
+        if (arr.count > 0) {
+        result = YES;
+        }else
+        {
+        result = NO;
+        }
+        
+    }];
+    
+    return result;
+}
+
+
 #pragma mark - 获取路径
 - (NSString *)pathOfDataBaseWithDataBaseName:(NSString *)dataBaseName
 {
     NSString * doc = PATH_OF_DOCUMENT_FOLDER;
     NSString * path = [doc stringByAppendingPathComponent:dataBaseName];
     return path;
+}
+
+#pragma mark - getter
+- (FMDatabaseQueue *)dbQueue
+{
+    if (_dbQueue == nil) {
+        _dbQueue = [[FMDatabaseQueue alloc] initWithPath:[self pathOfDataBaseWithDataBaseName:kDataBaseName]];
+    }
+    
+    return _dbQueue;
 }
 
 @end

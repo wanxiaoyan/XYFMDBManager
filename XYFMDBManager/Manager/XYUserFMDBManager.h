@@ -41,4 +41,27 @@
  */
 - (void)deleteUserInfo;
 
+
+#pragma mark - 多线插入数据
+
+/**
+ 多线插入数据
+ */
+- (void)insertUserInfoByMulThreadWithValues:(NSArray *)values;
+
+#pragma mark - 多线更新数据
+
+/**
+ 多线更新数据
+ */
+- (void)updateUserInfoByMulThreadWithValues:(NSArray *)values;
+
+
+#pragma mark - 多线程删除数据
+/**
+ 多线程删除数据
+ */
+- (void)deleteUserInfoByMulThreadWithValues:(NSArray *)values;
+
+
 @end

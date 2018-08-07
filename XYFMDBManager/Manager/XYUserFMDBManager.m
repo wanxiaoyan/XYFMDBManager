@@ -32,6 +32,8 @@ static NSString *const kDELETEUSERINFO = @"delete from user_table where user_id 
     [[XYFMDBManager shareManager] createTableWithSql:sql];
 }
 
+#pragma mark -------------------- 多线程操作
+
 #pragma mark - 插入数据
 - (void)insertUserInfo
 {
@@ -87,6 +89,37 @@ static NSString *const kDELETEUSERINFO = @"delete from user_table where user_id 
     NSArray *values = @[@"4"];
     
     [[XYFMDBManager shareManager] deleteDataWithSql:sql values:values];
+}
+
+#pragma mark -------------------- 多线程操作
+
+#pragma mark - 插入数据
+- (void)insertUserInfoByMulThreadWithValues:(NSArray *)values
+{
+    NSString *sql = kINSERTUSERINFO;
+    if ([[XYFMDBManager shareManager] itemDataIsExistsByMulThreadWithTableName:@"user_table" primaryKey:@"user_id" values:@[values[0]] completionBlock:nil]) {
+        // 存在  更新
+        sql = kUPDATEUSERINFO;
+        [[XYFMDBManager shareManager] updateDataByMulThreadWithSql:sql values:values];
+    }else
+    {
+        // 不存在 插入
+        [[XYFMDBManager shareManager] insertDataByMulThreadWithSql:sql values:values];
+    }
+}
+
+#pragma mark - 更新数据
+- (void)updateUserInfoByMulThreadWithValues:(NSArray *)values
+{
+    NSString *sql = kUPDATEUSERINFO_KEY;
+    [[XYFMDBManager shareManager] updateDataByMulThreadWithSql:sql values:values];
+}
+
+#pragma mark - 删除数据
+- (void)deleteUserInfoByMulThreadWithValues:(NSArray *)values
+{
+    NSString *sql = kDELETEUSERINFO;
+    [[XYFMDBManager shareManager] deleteDataByMulThreadWithSql:sql values:values];
 }
 
 
